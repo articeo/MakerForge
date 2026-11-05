@@ -4,7 +4,9 @@
 # e due copie con nome fisso, cosi' il link .../releases/latest/download/MakerForge-Setup-Windows.exe
 # punta sempre all'ultima versione.
 param([Parameter(Mandatory = $true)][string]$Version)
-$ErrorActionPreference = 'Stop'
+# 'Continue': in PowerShell 5.1 con 'Stop' qualsiasi riga su stderr di gh/git (anche un avviso
+# o un "repository non trovato" atteso) interrompe lo script. Gli errori veri si controllano con $LASTEXITCODE.
+$ErrorActionPreference = 'Continue'
 $gh = 'C:\Program Files\GitHub CLI\gh.exe'
 $here = $PSScriptRoot
 $dist = 'C:\Users\spakk\MakerForge\dist'
@@ -38,9 +40,11 @@ try {
   & $gh repo view "$user/MakerForge" *> $null
   if ($LASTEXITCODE -ne 0) {
     & $gh repo create MakerForge --public --description 'Laser, CNC e stampa 3D in un''unica app per Windows - download' --source . --remote origin --push
+    if ($LASTEXITCODE -ne 0) { throw 'Creazione del repository non riuscita' }
   } else {
     if (-not (git remote 2>$null | Select-String -Quiet '^origin$')) { git remote add origin "https://github.com/$user/MakerForge.git" }
-    git push -u origin main
+    git push -u origin main 2>&1 | Out-Host
+    if ($LASTEXITCODE -ne 0) { throw 'Invio del README non riuscito' }
   }
 } finally { Pop-Location }
 
